@@ -7,7 +7,8 @@ import os
 import math
 from datetime import datetime
 from pytz import timezone
-
+from pymongo import MongoClient
+import gridfs
 
 if 'HTTP_PROXY' in os.environ:
     del os.environ['HTTP_PROXY']
@@ -27,6 +28,10 @@ chrome_options.add_argument("--disable-dev-shm-usage")
 chrome_options.add_argument("--disable-gpu")
 chrome_options.add_argument("--remote-debugging-port=9222")
 
+client = MongoClient('mongofb://exemplo:27017/')
+db = client['NOME DO BANCO']
+collection = db['NOME DA COLECTION']
+fs = gridfs.GridFS(db)
 
 navegador = webdriver.Chrome(options=chrome_options)
 
@@ -36,7 +41,7 @@ time.sleep(2)
 navegador.get('https://oficioeletronico.com.br/Instituicoes/Consultas?page=1')
 
 
-time.sleep(5)
+time.sleep(3)
 
 filtro = navegador.find_element(By.NAME, 'filterStatus')
 filtro.click()
@@ -94,14 +99,26 @@ for numero in range(1, qtd + 1):
         
         print(lista_infos)
 
-        
+        # Inserir informações no MongoDB
+        doc_id = collection.insert_one(lista_infos).inserted_id
 
         time.sleep(2)
 
 
         baixar = navegador.find_element(By.CSS_SELECTOR, "a[title='Download']")
         baixar.click()
+        time.sleep(3)
 
+        download_dir = r'C:\Users\3470622\Desktop\Workspace\pgm testes\1CERTIDAO\baixados'
+        pdf_nome = lista_infos['nome_anexo'] 
+        pdf_path = os.path.join(download_dir, f"{pdf_nome}.pdf")
+
+        # Enviar o PDF para o MongoDB usando GridFS
+        with open(pdf_path, 'rb') as pdf_file:
+            fs.put(pdf_file, filename=pdf_nome, document_id=doc_id)
+
+        print(f"Arquivo PDF {pdf_nome} inserido no MongoDB com o ID {doc_id}")
+        
         time.sleep(2)
         navegador.back()
 
