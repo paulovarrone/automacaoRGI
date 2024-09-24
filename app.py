@@ -82,14 +82,12 @@ for numero in range(1, qtd + 1):
         for index, itens in enumerate(label):
             info = navegador.find_element(By.XPATH, f"//label[contains(text(), '{itens}')]/following-sibling::span").text
             lista_infos[label_banco[index]] = info
-            # lista_infos.append({itens.strip().lower(): info})
         
 
         label_banco2 = ['nome_anexo', 'formato']
         tds_com_texto = navegador.find_elements(By.XPATH, "//div[contains(@class, 'list-wrap')]//td[string-length(normalize-space()) > 2]")
 
         for index, td in enumerate(tds_com_texto):
-            # lista_infos.append({td.text.strip().lower(): td.text.strip()})
             lista_infos[label_banco2[index]] = td.text.strip()
         
         lista_infos['created_at'] = datetime.now(timezone('Brazil/East'))
