@@ -28,10 +28,14 @@ chrome_options.add_argument("--disable-dev-shm-usage")
 chrome_options.add_argument("--disable-gpu")
 chrome_options.add_argument("--remote-debugging-port=9222")
 
+client = MongoClient('mongodb://root:root@localhost:27017/')
+db = client['rgi']
+collection = db['teste_rgi']
+fs = gridfs.GridFS(db)
 
 navegador = webdriver.Chrome(options=chrome_options)
 
-time.sleep(5)
+time.sleep(2)
 
 
 navegador.get('https://oficioeletronico.com.br/Instituicoes/Consultas?page=1')
@@ -95,12 +99,17 @@ for numero in range(1, qtd + 1):
         
         print(lista_infos)
 
+        # Inserir informações no MongoDB
+        doc_id = collection.insert_one(lista_infos).inserted_id
 
         time.sleep(2)
 
 
         baixar = navegador.find_element(By.CSS_SELECTOR, "a[title='Download']")
         baixar.click()
+
+        time.sleep(3)
+
 
         time.sleep(2)
         navegador.back()
