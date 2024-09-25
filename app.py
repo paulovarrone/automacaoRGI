@@ -30,12 +30,12 @@ chrome_options.add_argument("--disable-dev-shm-usage")
 chrome_options.add_argument("--disable-gpu")
 chrome_options.add_argument("--remote-debugging-port=9222")
 
-client = MongoClient('mongodb://root:root@localhost:27017/')
+client = MongoClient('mongodb://varrone:varrone@10.32.96.181:17017/')
 db = client['rgi']
 collection = db['teste_rgi']
 fs = gridfs.GridFS(db)
 
-# collection.create_index("created_at", expireAfterSeconds=40 * 24 * 60 * 60)
+collection.create_index("created_at", expireAfterSeconds=40 * 24 * 60 * 60)
 
 navegador = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
 
