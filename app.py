@@ -1,4 +1,3 @@
-
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
@@ -9,6 +8,9 @@ from datetime import datetime
 from pytz import timezone
 from pymongo import MongoClient
 import gridfs
+import sys
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service
 
 if 'HTTP_PROXY' in os.environ:
     del os.environ['HTTP_PROXY']
@@ -33,7 +35,9 @@ db = client['rgi']
 collection = db['teste_rgi']
 fs = gridfs.GridFS(db)
 
-navegador = webdriver.Chrome(options=chrome_options)
+# collection.create_index("created_at", expireAfterSeconds=40 * 24 * 60 * 60)
+
+navegador = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
 
 time.sleep(2)
 
@@ -65,53 +69,61 @@ for numero in range(1, qtd + 1):
     time.sleep(2)
     navegador.get(f'https://oficioeletronico.com.br/Instituicoes/Consultas?page={numero}')
 
+     
     for tr in range(1, 11):
-        time.sleep(2)
         
-        abrir_pagina = navegador.find_element(By.XPATH, f'//*[@id="main"]/div[5]/table/tbody/tr[{tr}]/td[1]/a')  
-        abrir_pagina.click()
-    
-        time.sleep(2)
+        varrer_protocolo = navegador.find_element(By.XPATH, f'//*[@id="main"]/div[5]/table/tbody/tr[{tr}]/td[2]')
+        texto_protocolo = varrer_protocolo.text.strip()
+        documento_encontrado = collection.find_one({'protocolo': texto_protocolo})
 
-        anexos = navegador.find_element(By.NAME, 'btnPanelAnexos')
-        anexos.click()
-
-        time.sleep(2)
+        if documento_encontrado is None:
+            print(f"Protocolo {texto_protocolo} não existe no banco, SENDO BAIXADO.")
+                    
+            abrir_pagina = navegador.find_element(By.XPATH, f'//*[@id="main"]/div[5]/table/tbody/tr[{tr}]/td[1]/a')  
+            abrir_pagina.click()
         
-        label = [' Protocolo', ' Cartório', ' Subdistrito', ' CEP', ' Via', ' Endereço', ' Número', ' Complemento', ' Número Ofício', ' Número Contribuinte(IPTU)', ' Observações']
-        
-        label_banco = ['protocolo', 'cartorio', 'subdistrito', 'cep', 'via', 'endereco', 'numero', 'complemento', 'numero_oficio', 'numero_contribuinte_iptu', 'observacoes']
-        
-        lista_infos = {}
+            time.sleep(2)
 
-        for index, itens in enumerate(label):
-            info = navegador.find_element(By.XPATH, f"//label[contains(text(), '{itens}')]/following-sibling::span").text
-            lista_infos[label_banco[index]] = info
-        
+            anexos = navegador.find_element(By.NAME, 'btnPanelAnexos')
+            anexos.click()
 
-        label_banco2 = ['nome_anexo', 'formato']
-        tds_com_texto = navegador.find_elements(By.XPATH, "//div[contains(@class, 'list-wrap')]//td[string-length(normalize-space()) > 2]")
+            time.sleep(2)
+            
+            label = [' Protocolo', ' Cartório', ' Subdistrito', ' CEP', ' Via', ' Endereço', ' Número', ' Complemento', ' Número Ofício', ' Número Contribuinte(IPTU)', ' Observações']
+            
+            label_banco = ['protocolo', 'cartorio', 'subdistrito', 'cep', 'via', 'endereco', 'numero', 'complemento', 'numero_oficio', 'numero_contribuinte_iptu', 'observacoes']
+            
+            lista_infos = {}
 
-        for index, td in enumerate(tds_com_texto):
-            lista_infos[label_banco2[index]] = td.text.strip()
-        
-        lista_infos['created_at'] = datetime.now(timezone('Brazil/East'))
-        
-        print(lista_infos)
+            for index, itens in enumerate(label):
+                info = navegador.find_element(By.XPATH, f"//label[contains(text(), '{itens}')]/following-sibling::span").text
+                lista_infos[label_banco[index]] = info
+            
 
-        # Inserir informações no MongoDB
-        doc_id = collection.insert_one(lista_infos).inserted_id
+            label_banco2 = ['nome_anexo', 'formato']
+            tds_com_texto = navegador.find_elements(By.XPATH, "//div[contains(@class, 'list-wrap')]//td[string-length(normalize-space()) > 2]")
 
-        time.sleep(2)
+            for index, td in enumerate(tds_com_texto):
+                lista_infos[label_banco2[index]] = td.text.strip()
+            
+            lista_infos['created_at'] = datetime.now(timezone('Brazil/East'))
+            
+            print(lista_infos)
+
+            # Inserir informações no MongoDB
+            doc_id = collection.insert_one(lista_infos).inserted_id
+
+            time.sleep(2)
 
 
-        baixar = navegador.find_element(By.CSS_SELECTOR, "a[title='Download']")
-        baixar.click()
+            baixar = navegador.find_element(By.CSS_SELECTOR, "a[title='Download']")
+            baixar.click()
 
-        time.sleep(3)
+            time.sleep(3)
 
 
-        time.sleep(2)
-        navegador.back()
-
+            time.sleep(2)
+            navegador.back()
+        else:
+            print("DOCUMENTO JA EXISTE, PULANDO DOWNLOAD")
 
