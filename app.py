@@ -32,7 +32,7 @@ chrome_options.add_argument("--disable-dev-shm-usage")
 chrome_options.add_argument("--disable-gpu")
 chrome_options.add_argument("--remote-debugging-port=9222")
 
-client = MongoClient('mongodb://varrone:varrone@10.32.96.181:17017/')
+client = MongoClient('mongodb:ip do servidor')
 db = client['rgi']
 collection = db['teste_rgi']
 fs = gridfs.GridFS(db)
