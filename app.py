@@ -11,6 +11,8 @@ import gridfs
 import sys
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 if 'HTTP_PROXY' in os.environ:
     del os.environ['HTTP_PROXY']
@@ -39,90 +41,116 @@ collection.create_index("created_at", expireAfterSeconds=40 * 24 * 60 * 60)
 
 navegador = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
 
-time.sleep(2)
-
 
 navegador.get('https://oficioeletronico.com.br/Instituicoes/Consultas?page=1')
 
+def awaitElement(by: str = By.ID, value: str | None = None, time: int = 10):
+    return WebDriverWait(navegador, time).until(EC.presence_of_element_located((by, value)))
 
-time.sleep(3)
+def awaitElements(by: str = By.ID, value: str | None = None, time: int = 10):
+    return WebDriverWait(navegador, time).until(EC.presence_of_all_elements_located((by, value)))
 
-filtro = navegador.find_element(By.NAME, 'filterStatus')
+filtro = awaitElement(By.NAME, 'filterStatus')
+# filtro = awaitElement(By.NAME, 'filterStatus')
 filtro.click()
-time.sleep(1)
-respondido = navegador.find_element(By.XPATH, '//*[@id="filterStatus"]/option[3]')
+# time.sleep(1)
+respondido = awaitElement(By.XPATH, '//*[@id="filterStatus"]/option[3]')
 respondido.click()
-time.sleep(1)
-filtrar = navegador.find_element(By.XPATH, '//*[@id="main"]/div[2]/ul/li[1]/button')
+# time.sleep(1)
+filtrar = awaitElement(By.XPATH, '//*[@id="main"]/div[2]/ul/li[1]/button')
 filtrar.click()
 
-time.sleep(2)
+time.sleep(1)
 
 
-qtd_itens_element = navegador.find_element(By.XPATH, '//*[@id="main"]/div[5]/div/div/span[1]/p[1]')
-qtd_itens = qtd_itens_element.text.strip()
-index = qtd_itens.find(' ')
-qtd = qtd_itens[:index]
-qtd = math.ceil(int(qtd) / 10)
+qtd_itens_element = awaitElement(By.XPATH, '//*[@id="main"]/div[5]/div/div/span[1]/p[2]')
+qtd_itens = qtd_itens_element.text.strip().split(' ')
+# index = qtd_itens.find(' ')
+print(qtd_itens)
+
+qtd = int(qtd_itens[-1])
+print(qtd)
+# qtd = math.ceil(int(qtd) / 10)
 
 for numero in range(1, qtd + 1):
-    time.sleep(2)
+    # time.sleep(2)
     navegador.get(f'https://oficioeletronico.com.br/Instituicoes/Consultas?page={numero}')
 
      
     for tr in range(1, 11):
         
-        varrer_protocolo = navegador.find_element(By.XPATH, f'//*[@id="main"]/div[5]/table/tbody/tr[{tr}]/td[2]')
+        varrer_protocolo = awaitElement(By.XPATH, f'//*[@id="main"]/div[5]/table/tbody/tr[{tr}]/td[2]')
         texto_protocolo = varrer_protocolo.text.strip()
-        documento_encontrado = collection.find_one({'protocolo': texto_protocolo})
+        documento_encontrado = collection.find_one({'Protocolo': texto_protocolo})
 
         if documento_encontrado is None:
             print(f"Protocolo {texto_protocolo} não existe no banco, SENDO BAIXADO.")
                     
-            abrir_pagina = navegador.find_element(By.XPATH, f'//*[@id="main"]/div[5]/table/tbody/tr[{tr}]/td[1]/a')  
+            abrir_pagina = awaitElement(By.XPATH, f'//*[@id="main"]/div[5]/table/tbody/tr[{tr}]/td[1]/a')  
             abrir_pagina.click()
         
-            time.sleep(2)
+            # time.sleep(2)
 
-            anexos = navegador.find_element(By.NAME, 'btnPanelAnexos')
+            anexos = awaitElement(By.NAME, 'btnPanelAnexos')
             anexos.click()
 
-            time.sleep(2)
+            # time.sleep(2)
             
-            label = [' Protocolo', ' Cartório', ' Subdistrito', ' CEP', ' Via', ' Endereço', ' Número', ' Complemento', ' Número Ofício', ' Número Contribuinte(IPTU)', ' Observações']
+            # label = [' Protocolo', ' Cartório', ' Subdistrito', ' CEP', ' Via', ' Endereço', ' Número', ' Complemento', ' Número Ofício', ' Número Contribuinte(IPTU)', ' Observações']
             
-            label_banco = ['protocolo', 'cartorio', 'subdistrito', 'cep', 'via', 'endereco', 'numero', 'complemento', 'numero_oficio', 'numero_contribuinte_iptu', 'observacoes']
+            # label_banco = ['protocolo', 'cartorio', 'subdistrito', 'cep', 'via', 'endereco', 'numero', 'complemento', 'numero_oficio', 'numero_contribuinte_iptu', 'observacoes']
             
             lista_infos = {}
 
-            for index, itens in enumerate(label):
-                info = navegador.find_element(By.XPATH, f"//label[contains(text(), '{itens}')]/following-sibling::span").text
-                lista_infos[label_banco[index]] = info
-            
+            # for index, itens in enumerate(label):
+            #     info = awaitElement(By.XPATH, f"//label[contains(text(), '{itens}')]/following-sibling::span").text
+            #     lista_infos[label_banco[index]] = info
 
-            label_banco2 = ['nome_anexo', 'formato']
-            tds_com_texto = navegador.find_elements(By.XPATH, "//div[contains(@class, 'list-wrap')]//td[string-length(normalize-space()) > 2]")
+            dados = navegador.find_element(By.ID, value='Dados')
+            campos = dados.find_elements(By.TAG_NAME, value='label')
 
-            for index, td in enumerate(tds_com_texto):
-                lista_infos[label_banco2[index]] = td.text.strip()
+            # [print(i.text) for i in dados]
+            for i in campos:
+                lista_infos[i.text.strip()] = i.find_element(By.XPATH,'following-sibling::span[1]').text.strip() 
             
-            lista_infos['created_at'] = datetime.now(timezone('Brazil/East'))
+            label_banco2 = ['Nome Anexo', 'Formato']
+            try:
+                tds_com_texto = awaitElements(By.XPATH, "//div[contains(@class, 'list-wrap')]//td[string-length(normalize-space()) > 2]", 2)
+
+                # for index, td in enumerate(tds_com_texto):
+                #     lista_infos[label_banco2[index]] = td.text.strip()
+                for index, td in enumerate(tds_com_texto):
+                    if index < len(label_banco2):
+                        lista_infos[label_banco2[index]] = td.text.strip()
+                    else:
+                        print(f"Índice {index} fora do alcance de label_banco2, valor ignorado.")
+
+            except Exception:
+                print(Exception)
+
+            lista_infos['Data de Criação'] = datetime.now(timezone('Brazil/East'))
             
             print(lista_infos)
 
+            if '' in lista_infos:
+                del lista_infos['']
+            
             # Inserir informações no MongoDB
             doc_id = collection.insert_one(lista_infos).inserted_id
 
-            time.sleep(2)
+            # time.sleep(2)
+
+            try:
+                baixar = awaitElement(By.CSS_SELECTOR, "a[title='Download']", 2)
+                baixar.click()
+                time.sleep(2)
+                lista_infos['Tem Anexo'] = True
+            except Exception:
+                lista_infos['Tem Anexo'] = False
+                print(Exception)
 
 
-            baixar = navegador.find_element(By.CSS_SELECTOR, "a[title='Download']")
-            baixar.click()
-
-            time.sleep(3)
-
-
-            time.sleep(2)
+            # time.sleep(2)
             navegador.back()
         else:
             print("DOCUMENTO JA EXISTE, PULANDO DOWNLOAD")
