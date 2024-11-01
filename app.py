@@ -141,10 +141,14 @@ for numero in range(1, qtd + 1):
             # time.sleep(2)
 
             try:
-                baixar = awaitElement(By.CSS_SELECTOR, "a[title='Download']", 2)
-                baixar.click()
-                time.sleep(2)
-                lista_infos['Tem Anexo'] = True
+                downloads  = awaitElements(By.CSS_SELECTOR, "a[title='Download']", 2)
+
+                if downloads :
+                    for i, baixar in enumerate(downloads):
+                        print(f"baixando anexo {i + 1}")
+                        baixar.click()
+                        time.sleep(2)
+                        lista_infos['Tem Anexo'] = True
             except Exception:
                 lista_infos['Tem Anexo'] = False
                 print(Exception)
